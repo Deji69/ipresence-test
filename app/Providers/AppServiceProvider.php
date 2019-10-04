@@ -13,6 +13,8 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register()
     {
-        //
+        $this->app->singleton(\App\Repositories\QuoteRepository::class, function ($app) {
+            return new \App\Repositories\QuoteRepository(120);
+        });
     }
 }
