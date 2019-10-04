@@ -1,6 +1,7 @@
 <?php
 namespace App\Repositories;
 
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
 
 class QuoteRepository
@@ -18,26 +19,15 @@ class QuoteRepository
      * @param  bool $fresh If TRUE, skips the cahce layer.
      * @return \Illuminate\Support\Collection
      */
-    public function getAllQuotes(bool $fresh = false)
+    public function getAllQuotes(bool $fresh = false): Collection
     {
-        $getQuotes = function() {
-            $data = \file_get_contents(\storage_path('data/quotes.json'));
-            $data = \collect(\json_decode($data)->quotes);
-            $data->transform(function ($item) {
-                $item->author = \trim($item->author, " \t\r\n\0\x0B-");
-                $item->author_key = \strtolower(
-                    \preg_replace('/\s+/', '-', $item->author)
-                );
-                return $item;
-            });
-            return $data->sortBy('quote');
-        };
-
         if ($fresh) {
-            return $getQuotes();
+            return $this->getQuotesFromStorage();
         }
 
-        return Cache::remember('quotes', $this->quoteCacheTtl, $getQuotes);
+        return Cache::remember('quotes', $this->quoteCacheTtl, function () {
+            return $this->getQuotesFromStorage();
+        });
     }
 
     /**
@@ -47,7 +37,7 @@ class QuoteRepository
      * @param  int    $limit  Maximum number of quotes to return.
      * @return \Illuminate\Support\Collection
      */
-    public function getQuotesByAuthor(string $author, int $limit)
+    public function getQuotesByAuthor(string $author, int $limit): Collection
     {
         return $this->getAllQuotes()
                     ->where('author_key', $author)
@@ -62,12 +52,26 @@ class QuoteRepository
      * @param  int    $limit  Maximum number of quotes to return
      * @return \Illuminate\Support\Collection
      */
-    public function getQuotesShouted(string $author, int $limit)
+    public function getQuotesShouted(string $author, int $limit): Collection
     {
         return $this->getQuotesByAuthor($author, $limit)
                     ->map(function ($quote) {
                         $quote = \str_replace('.', '!', $quote);
                         return \mb_strtoupper($quote);
                     });
+    }
+
+    protected function getQuotesFromStorage()
+    {
+        $data = \file_get_contents(\storage_path('data/quotes.json'));
+        $data = \collect(\json_decode($data)->quotes);
+        $data->transform(function ($item) {
+            $item->author = \trim($item->author, " \t\r\n\0\x0B-");
+            $item->author_key = \strtolower(
+                \preg_replace('/\s+/', '-', $item->author)
+            );
+            return $item;
+        });
+        return $data->sortBy('quote');
     }
 }

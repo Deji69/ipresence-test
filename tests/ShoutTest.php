@@ -1,6 +1,8 @@
 <?php
 
-use Laravel\Lumen\Testing\DatabaseTransactions;
+use App\Repositories\QuoteRepository;
+use Carbon\Carbon;
+use Illuminate\Support\Collection;
 
 class ShoutTest extends TestCase
 {
@@ -63,5 +65,48 @@ class ShoutTest extends TestCase
                 'THE ONLY WAY TO DO GREAT WORK IS TO LOVE WHAT YOU DO!',
             ]
         ]);
+    }
+
+    public function testQuoteCaching()
+    {
+        $mockRepo = new class extends QuoteRepository {
+            public $timesCalled = 0;
+
+            public function __construct()
+            {
+                parent::__construct(30);
+            }
+
+            protected function getQuotesFromStorage()
+
+            {
+                ++$this->timesCalled;
+                return parent::getQuotesFromStorage();
+            }
+        };
+        $this->app->singleton(QuoteRepository::class, function () use ($mockRepo) {
+            return $mockRepo;
+        });
+        $now = Carbon::now();
+
+        // check cache is used
+        Carbon::setTestNow($now);
+        $this->json('GET', self::ROUTE, ['limit' => 2]);
+        $this->seeStatusCode(200);
+        $this->json('GET', self::ROUTE, ['limit' => 2]);
+        $this->seeStatusCode(200);
+        $this->assertEquals(1, $mockRepo->timesCalled);
+
+        // check cache is invalidated
+        Carbon::setTestNow($now->addMinute());
+        $this->json('GET', self::ROUTE, ['limit' => 2]);
+        $this->seeStatusCode(200);
+        $this->assertEquals(2, $mockRepo->timesCalled);
+
+        // check cache is used again
+        Carbon::setTestNow($now->addSeconds(29));
+        $this->json('GET', self::ROUTE, ['limit' => 2]);
+        $this->seeStatusCode(200);
+        $this->assertEquals(2, $mockRepo->timesCalled);
     }
 }
