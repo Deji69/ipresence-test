@@ -53,4 +53,15 @@ class ShoutTest extends TestCase
             ]
         ]);
     }
+
+    public function testLimitReturnedQuotes()
+    {
+        $this->json('GET', self::ROUTE, ['limit' => 1]);
+        $this->seeStatusCode(200);
+        $this->seeJson([
+            'data' => [
+                'THE ONLY WAY TO DO GREAT WORK IS TO LOVE WHAT YOU DO!',
+            ]
+        ]);
+    }
 }
