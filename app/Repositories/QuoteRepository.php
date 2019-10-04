@@ -67,7 +67,7 @@ class QuoteRepository
         return $this->getQuotesByAuthor($author, $limit)
                     ->map(function ($quote) {
                         $quote = \str_replace('.', '!', $quote);
-                        return \strtoupper($quote);
+                        return \mb_strtoupper($quote);
                     });
     }
 }
