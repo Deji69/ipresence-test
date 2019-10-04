@@ -21,6 +21,11 @@ class ShoutController extends Controller
             'limit' => 'numeric|min:1|max:10'
         ]);
         $limit = (int)$request->input('limit', 10) ?: 10;
-        return ['data' => $this->quoteRepo->getQuotesShouted($author, $limit)];
+        return response()->json(
+            ['data' => $this->quoteRepo->getQuotesShouted($author, $limit)],
+            200,
+            [],
+            JSON_UNESCAPED_UNICODE
+        );
     }
 }
